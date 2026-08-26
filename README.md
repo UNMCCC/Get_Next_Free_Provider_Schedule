@@ -82,6 +82,29 @@ When twp or more guidelines overlap in the calendar, the one with the highest pr
 
 We should only be concerned with active guidelines (Disabled=0)
 
+## About Template Rules
+Known TemplRule values (from a 2026 audit of prod SchTempl):
+
+| TemplRule | Name                                    | Uses RuleLimit? | Uses PRS_ID (activity)?  | Prod instances |
+|-----------|-----------------------------------------|-----------------|--------------------------|-----------------|
+| 2         | Maximum Appointments                    | Yes             | No                       | 20,815          |
+| 1         | Maximum Conflicts                       | Yes             | No                       | 936             |
+| 9         | Only Appointments with This Activity    | No (Limit=0)    | Yes                      | ~800            |
+| 12        | Maximum Appointments With This Activity | Yes             | Yes                      | 16              |
+| 5         | Maximum Appointments of Status          | Yes             | No, but uses Sch.Status  | 41              |
+| 7         | Only Patients of Status                 | No (Limit=0)    | No, but links to pat stat| 18              |
+| 8         | Only Appts of Status                    | Yes             | No, but sch.status link  | 0               |
+| 10        | Maximum Appointments with Diagnosis     | Yes             | No, but tpg.code link    | 0               |
+| 3         | Maximum Appointments of Payer Type      | Yes             | No, but yuck             | 0               |
+
+Note on RuleLimit=0: on Vacation/Holiday/Prof-Leave templates (TemplateType 1/2/3),
+Max Appointments is FORCED to Limit=0, and that 0 is meaningful -- it's the
+mechanism that blocks all scheduling. On Custom templates (TemplateType 4/6),
+RuleLimit is frequently left at 0 simply because it was never configured by the
+guideline author, and should be treated as "no limit," not "zero appointments."
+Downstream logic should scope the "0 = unlimited" interpretation to
+TemplateType 4/6 only.
+
 # Schedule (what times are already booked)
 
  A simplistic look at future appointments captured in a view
