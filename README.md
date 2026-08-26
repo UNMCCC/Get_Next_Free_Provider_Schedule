@@ -52,8 +52,8 @@ dbo.SchTempl
 Frequencies represented by these four fields echo the guidelines over the calendar.  Encoding with Examples:
 * Freq_Type = 2^2   Every X days, where X is stored in freq_Interval.   Every 3 days:  freq_type=4;freq_interval=3,freq_relative_interval=0;freq_recurrence_factor=0
 * Freq_Type = 2^3   Every X weeks, with checkboxes for Mon-Tue-..-Sun.  freq_recurrence_factor is X and in freq_Interval, an integer from 1 to 128 or so, 76 diff values.
-                     Here is the trick.  Sun=2^0, Mon=2^1,...,Sat=2^6.  If you checked Mon and Tue, X would be 7. If checked Wed and Thr, X is 24. Wed-Thr-Fri-> X=56.
-                     All days but Sunday would be 126, All but Saturday-> X=63. 
+                     Here is the trick.  Sun=2^0, Mon=2^1,...,Sat=2^6.
+                     Need an example here.
 * Freq_Type = 2^4   The X of every Y Months.  
                      - Freq_interval is X; 
                      - Freq_relative_interval is zero, does not apply; 
