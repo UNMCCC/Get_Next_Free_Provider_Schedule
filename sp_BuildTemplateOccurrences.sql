@@ -262,11 +262,13 @@ BEGIN
         PK, Staff_Staff_ID, Activity, TemplateType, Priority, TemplRule, RuleLimit,
         StartDatetime, EndDatetime,
         Block_Type = CASE
-            WHEN TemplateType IN (1, 2, 3)                THEN 'BLOCKING'
+           WHEN TemplateType IN (1, 2, 3)                THEN 'BLOCKING'
             WHEN NormActivity LIKE '% NOT IN CLINIC %'     THEN 'BLOCKING'
+            WHEN NormActivity LIKE '% NON CLINIC %'        THEN 'BLOCKING'
             WHEN NormActivity LIKE '% OUT OF CLINIC %'     THEN 'BLOCKING'
             WHEN NormActivity LIKE '% PTO %'               THEN 'BLOCKING'
             WHEN NormActivity LIKE '% DO NOT BOOK %'       THEN 'BLOCKING'
+            WHEN NormActivity LIKE '% DNB %'               THEN 'BLOCKING'
             WHEN NormActivity LIKE '% CLOSED %'            THEN 'BLOCKING'
             WHEN NormActivity LIKE '% VACATION %'          THEN 'BLOCKING'
             WHEN NormActivity LIKE '% BLOCK %'             THEN 'BLOCKING'
@@ -284,9 +286,20 @@ BEGIN
             WHEN NormActivity LIKE '%SPEICAL CLINIC%'      THEN 'BLOCKING'
             WHEN NormActivity LIKE '%BREAK '               THEN 'BLOCKING'
             WHEN NormActivity LIKE '%LUNCH '               THEN 'BLOCKING'
+			WHEN NormActivity LIKE '%Clinic to start at 830a%' THEN 'BLOCKING' -- Andre
+			WHEN NormActivity LIKE '%NO FNA CLINIC%'         THEN 'BLOCKING' -- Agarwal, Broehm
+			WHEN NormActivity LIKE '%UNM Not in Clinic-%' THEN 'BLOCKING' -- andre, booth
+			WHEN NormActivity LIKE '%Departed%' THEN 'BLOCKING' -- hadley
+			WHEN NormActivity LIKE '%Depature%' THEN 'BLOCKING' -- jude khatib
+			WHEN NormActivity LIKE '%Hashemi Out%' THEN 'BLOCKING' -- hashemi
+			WHEN NormActivity LIKE '%Fellowship ending%' THEN 'BLOCKING' -- jones
+			WHEN NormActivity LIKE '%LAST DAY Dr. MAZ%' THEN 'BLOCKING' -- hashemi
+			WHEN NormActivity LIKE '%None clinic hours%' THEN 'BLOCKING' -- hashemi
+			WHEN NormActivity LIKE '%Rounding%' THEN 'BLOCKING' -- hashemi
             WHEN TemplateType = 4                          THEN 'FREE_SLOT' -- Clinic Hours default, if not caught above
             WHEN TemplateType = 6                          THEN 'FREE_SLOT' -- Custom default, if not caught above
             ELSE 'UNKNOWN'
+
         END
     INTO #OccFinal
     FROM #OccClassified;
