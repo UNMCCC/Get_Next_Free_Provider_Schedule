@@ -1,6 +1,6 @@
-USE [MosaiqAdmin]
+﻿USE [MosaiqAdmin]
 GO
-/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/9/2026 4:35:33 PM ******/
+/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/14/2026 8:21:38 AM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -11,7 +11,7 @@ ALTER PROCEDURE [dbo].[sp_BuildTemplateOccurrences]
 AS
 BEGIN
     SET NOCOUNT ON;
-    -- dependencies: [SchTempl]
+    --dependencies: [SchTempl]
 
     -- Sunday = 1 ... Saturday = 7, to match the README's weekday
     -- numbering (used directly by Freq_Type 32/128) and its bitmask
@@ -277,7 +277,7 @@ BEGIN
             WHEN NormActivity LIKE '% VACATION %'          THEN 'BLOCKING'
             WHEN NormActivity LIKE '% BLOCK %'             THEN 'BLOCKING'
             WHEN NormActivity LIKE '% MEETING %'           THEN 'BLOCKING'
-            WHEN NormActivity LIKE '% ANNUAL LEAVE %'      THEN 'BLOCKING'
+            WHEN NormActivity LIKE '% ANNUAL LEAVE%'      THEN 'BLOCKING'
             WHEN NormActivity LIKE '% INTERVIEW %'         THEN 'BLOCKING'
             WHEN NormActivity LIKE '% MOCK ORALS %'        THEN 'BLOCKING'
             WHEN NormActivity LIKE '%SURG%'                THEN 'BLOCKING'
@@ -305,6 +305,38 @@ BEGIN
             WHEN NormActivity LIKE '%No Friday clinic%'    THEN 'BLOCKING' -- block those fridays
             WHEN NormActivity LIKE '%Blocked Daily 8:%'    THEN 'BLOCKING' -- block
             WHEN NormActivity LIKE '%Blocked Monday%'      THEN 'BLOCKING' -- block
+--  ASK  Cureton: Unblock Lunch for patient appoitntments
+--  ASK Ebaid: Excisional BX 30 min
+            WHEN NormActivity LIKE '%Schedule Blocked%'    THEN 'BLOCKING' -- Finlay : Schedule Blocked
+            WHEN NormActivity LIKE '%Wed UNM Clinic Block%'THEN 'BLOCKING' -- Freyer: Wed UNM Clinic Block Freyer-Shari
+            WHEN NormActivity LIKE '%Do not schedule%'     THEN 'BLOCKING' -- Gan Gregory Do not schedule 1 1.3-
+            WHEN NormActivity LIKE '%Blocked Thursd%'      THEN 'BLOCKING' --  Harsh -- "Blocked Thursday..." AND "Blocked Wednesday"...
+            WHEN NormActivity LIKE '%Blocked Wed%'        THEN 'BLOCKING' --  Harsh -- "Blocked Thursday..." AND "Blocked Wednesday"...
+--  Activity based filters should exclude this :  Hashemi -- 4th Tues  -- but shes gone!
+-- ASK Haynes -- Covering Harari Pre-Chemo (sounds like clinic hours, w specif?)
+-- ASK Hoorbeek --"Nemunaitis out prechemo... (sounds like clinic hours?)
+-- ASK Kaplan -- Citoscopy
+            WHEN NormActivity LIKE '%Lokich professional leave%' THEN 'BLOCKING' -- Lokich -- Lokich professional leave
+            WHEN NormActivity LIKE '%No Tuesday clinic%'   THEN 'BLOCKING' -- McKean "No Tuesday clinic E 9/5" (Confirm template reused not just 9/5)
+-- ASK Moturi's template have a 999 limit.  pls explain.
+-- Munoz -- "E 5/4" what does it mean? sounds like clinic
+            WHEN NormActivity LIKE '%LAST DAY MURRAY%'     THEN 'BLOCKING' -- Murray -- "LAST DAY MURRAY", prolly means no more aka BLOCKING?
+            WHEN NormActivity LIKE '% professional %'      THEN 'BLOCKING' -- NGuyen -- "professional" means blocking?
+            WHEN NormActivity LIKE '% Perez out 05%'       THEN 'BLOCKING' -- Perez out 05/06 E-2/11  Does it mean that there is a block from May 6 to Feb 11 or woot?
+            WHEN NormActivity LIKE '%SCHEDULE BLOCKED%'    THEN 'BLOCKING' -- Phuoc SCHEDULE BLOCKED
+            WHEN NormActivity LIKE '%LUNCH-rebuck%'        THEN 'BLOCKING' -- Rebuck -- LUNCH-rebuck
+ --confirm    WHEN NormActivity LIKE '%Annual Leave-Royce%'  THEN 'BLOCKING' -- CONFIRM TWEAKED CASE WORKED? ROyce -- Annual Leave-Royce
+-- ASK Tarrant Elizabeth -- "Grace clinic" (sounds like clinic ok to book w conditio ns)
+            WHEN NormActivity LIKE '%Ground Rounds%'       THEN 'BLOCKING' --Tawfik -- "..Gound Rounds.."
+            WHEN NormActivity LIKE '%Thammineni last day%' THEN 'BLOCKING' --Thammineni "Thammineni last day"
+            WHEN NormActivity LIKE '%Do not Schedule%'     THEN 'BLOCKING' --Thomson -- Do not Schedule
+            WHEN NormActivity LIKE '% Wed off %'           THEN 'BLOCKING' --   -- Wed off
+            WHEN NormActivity LIKE '%Blocked Tue%'         THEN 'BLOCKING' --   White -- BLocked Tue
+            -- confirm case above works   Blocked wed
+            -- confirm case above works   WIN -- PROFESSIONAL LEAVE
+-- ask Wong -- "...CURRENT THERAPIES"... and "...TUMOR BOARD"  sounds like blocking?
+            WHEN NormActivity LIKE '% Tumor Board%'         THEN 'BLOCKING' 
+-- confirm gone Yilmaz for the love of christ
             WHEN NormActivity LIKE '%Yilmaz Out-Cli%'      THEN 'BLOCKING' -- Yilmaz left anyway
             WHEN NormActivity LIKE '%UNM Not in Clinic - yilmaz%' THEN 'BLOCKING' -- Yilmaz left anyway
             WHEN TemplateType = 4                          THEN 'FREE_SLOT' -- Clinic Hours default, if not caught above
