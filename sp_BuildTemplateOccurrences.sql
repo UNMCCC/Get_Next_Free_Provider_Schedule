@@ -317,7 +317,7 @@ BEGIN
 -- ASK Hoorbeek --"Nemunaitis out prechemo... (sounds like clinic hours?)
 -- ASK Kaplan -- Citoscopy
             WHEN NormActivity LIKE '%Lokich professional leave%' THEN 'BLOCKING' -- Lokich -- Lokich professional leave
-            WHEN NormActivity LIKE '%No Tuesday clinic%'   THEN 'BLOCKING' -- McKean "No Tuesday clinic E 9/5" (Confirm template reused not just 9/5)
+            WHEN NormActivity LIKE '%No Tuesday clin%'   THEN 'BLOCKING' -- McKean "No Tuesday clinic E 9/5" (Confirm template reused not just 9/5)
 -- ASK Moturi's template have a 999 limit.  pls explain.
 -- Munoz -- "E 5/4" what does it mean? sounds like clinic
             WHEN NormActivity LIKE '%LAST DAY MURRAY%'     THEN 'BLOCKING' -- Murray -- "LAST DAY MURRAY", prolly means no more aka BLOCKING?
