@@ -1,19 +1,18 @@
-USE [MosaiqAdmin]
+﻿USE [MosaiqAdmin]
 GO
-
-/****** Object:  StoredProcedure [dbo].[sp_BuildProviderEffectiveSchedule]    Script Date: 9/10/2026 7:06:20 PM ******/
+/****** Object:  StoredProcedure [dbo].[sp_BuildProviderEffectiveSchedule]    Script Date: 9/16/2026 6:23:18 AM ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-CREATE PROCEDURE [dbo].[sp_BuildProviderEffectiveSchedule]
+ALTER PROCEDURE [dbo].[sp_BuildProviderEffectiveSchedule]
 AS
 BEGIN
     SET NOCOUNT ON;
-
+    /* this SP starts building each provider schedule based
+    on the curated guidelines, the calendar, and resolving the
+    overlaps, leaning on the Priority when conflicts are present */
     --------------------------------------------------------------------
     -- 1) Boundaries: every distinct Start/End time per provider
     --------------------------------------------------------------------
@@ -145,6 +144,3 @@ BEGIN
     JOIN dbo.visit_providers_in_buckets vpb ON vpb.prov_key_MQ = c.Staff_Staff_ID;
 
 END
-GO
-
-
