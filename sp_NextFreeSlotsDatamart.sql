@@ -1,3 +1,11 @@
+﻿USE MosaiqAdmin
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
 CREATE PROCEDURE dbo.sp_NextFreeSlotsDatamart
     @SlotMinutes         INT = NULL,   -- optional minimum-duration filter, same semantics as sp_GetNextFreeSlots
     @StaleDaysThreshold   INT = 180    -- days since last real visit before PossiblyDeparted flips to 1; tune per leave policy
@@ -6,6 +14,12 @@ CREATE PROCEDURE dbo.sp_NextFreeSlotsDatamart
                                         -- dbo.vw_ActiveSchedulingProviders deliberately does not duplicate this logic.
 AS
 BEGIN
+/* this ties everything to id the next avail slot for each provider
+  it uses the curated guidelines, the provider effective schedule, 
+  the scheduled appts, and then based on the limit rules, the text-based
+  guidelines capacity rules, it offers the best info on available scheduling
+  slots to schedulers */
+
     SET NOCOUNT ON;
 
     DECLARE @Now     DATETIME2(0) = CAST(GETDATE() AS DATETIME2(0));
@@ -86,20 +100,20 @@ BEGIN
         EffectiveCapacity = CASE
             WHEN f.RuleLimit >= 1 THEN f.RuleLimit
             WHEN ovr.ManualCapacity IS NOT NULL THEN ovr.ManualCapacity
-            WHEN ovr.ManualDurationMinutes IS NOT NULL
+            WHEN ISNULL(ovr.ManualDurationMinutes, 0) > 0
                 THEN DATEDIFF(MINUTE, f.StartDatetime, f.EndDatetime) / ovr.ManualDurationMinutes
-            WHEN dbo.fn_ExtractDurationMinutes(f.Activity) IS NOT NULL
-                THEN DATEDIFF(MINUTE, f.StartDatetime, f.EndDatetime) / dbo.fn_ExtractDurationMinutes(f.Activity)
-            WHEN dbo.fn_ExtractMaxPatients(f.Activity) IS NOT NULL
-                THEN dbo.fn_ExtractMaxPatients(f.Activity)
+            WHEN ISNULL(dbo.ufn_ExtractDurationMinutes(f.Activity), 0) > 0
+                THEN DATEDIFF(MINUTE, f.StartDatetime, f.EndDatetime) / dbo.ufn_ExtractDurationMinutes(f.Activity)
+            WHEN dbo.ufn_ExtractMaxPatients(f.Activity) IS NOT NULL
+                THEN dbo.ufn_ExtractMaxPatients(f.Activity)
             ELSE NULL
         END,
         CapacitySource = CASE
             WHEN f.RuleLimit >= 1 THEN 'RULELIMIT'
             WHEN ovr.ManualCapacity IS NOT NULL THEN 'MANUAL_OVERRIDE_CAPACITY'
-            WHEN ovr.ManualDurationMinutes IS NOT NULL THEN 'MANUAL_OVERRIDE_DURATION'
-            WHEN dbo.fn_ExtractDurationMinutes(f.Activity) IS NOT NULL THEN 'DURATION_DERIVED'
-            WHEN dbo.fn_ExtractMaxPatients(f.Activity) IS NOT NULL THEN 'MAX_PARSED'
+            WHEN ISNULL(ovr.ManualDurationMinutes, 0) > 0 THEN 'MANUAL_OVERRIDE_DURATION'
+            WHEN ISNULL(dbo.ufn_ExtractDurationMinutes(f.Activity), 0) > 0 THEN 'DURATION_DERIVED'
+            WHEN dbo.ufn_ExtractMaxPatients(f.Activity) IS NOT NULL THEN 'MAX_PARSED'
             ELSE 'UNLIMITED'
         END
     INTO #FreeIntervalBookedCount
@@ -173,7 +187,7 @@ BEGIN
     LEFT JOIN #LastVisit lv ON lv.Staff_Staff_ID = r.Staff_Staff_ID;
 
     --------------------------------------------------------------------
-    -- 6) Persist
+    -- 6) Persist (Endure and Survive)
     --------------------------------------------------------------------
     TRUNCATE TABLE dbo.NextFreeSlotsDatamart;
 
