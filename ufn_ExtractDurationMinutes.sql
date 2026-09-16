@@ -1,7 +1,16 @@
-CREATE OR ALTER FUNCTION dbo.ufn_ExtractDurationMinutes (@Description NVARCHAR(200))
+﻿USE [MosaiqAdmin]
+GO
+/****** Object:  UserDefinedFunction [dbo].[ufn_ExtractDurationMinutes]    Script Date: 9/16/2026 7:16:47 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER   FUNCTION [dbo].[ufn_ExtractDurationMinutes] (@Description NVARCHAR(200))
 RETURNS INT
 AS
 BEGIN
+
 /* ============================================================================
    Duration-derived capacity for RuleLimit = 0 FREE_SLOT templates
    ----------------------------------------------------------------------------
@@ -15,6 +24,7 @@ BEGIN
    Stage 3.
 
    PRECEDENCE (confirmed)
+
      1. RuleLimit >= 1                          -> use as-is (unchanged, most authoritative)
      2. RuleLimit = 0 AND manual override set    -> use override (hand-confirmed by Katybeth's team)
      3. RuleLimit = 0 AND clean single duration  -> (EndDatetime - StartDatetime) / duration
@@ -23,6 +33,7 @@ BEGIN
         number stated anywhere in the text          (nobody ever configured the real limit) -- report
                                                       to Katybeth's team rather than guess.
      6. Neither                                  -> unlimited (unchanged current behavior)
+     
 
    IMPORTANT SCOPE NOTE
    This should only run against templates already classified FREE_SLOT by
@@ -51,6 +62,7 @@ BEGIN
 --    confirmation like the OV/PO one, or this will misparse rows like
 --    those.
 ------------------------------------------------------------------------
+
 
     DECLARE @i INT = 1;
     DECLARE @Len INT = LEN(@Description);
@@ -93,13 +105,69 @@ BEGIN
         DECLARE @Trimmed NVARCHAR(200) = LTRIM(RTRIM(@Description));
         DECLARE @Rest NVARCHAR(200);
 
-        IF @Trimmed LIKE 'OV[0-9]%'          -- confirmed: OV<N> = Office Visit N min
+        IF (@Trimmed LIKE 'OV[0-9]%' OR @Trimmed LIKE 'OV [0-9]%')
         BEGIN
             SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
             IF PATINDEX('%[^0-9]%', @Rest) = 0
                 SET @Result = CAST(@Rest AS INT);
         END
-        ELSE IF @Trimmed LIKE 'PO[0-9]%'     -- confirmed: PO<N> = Post-Op N min
+        ELSE IF (@Trimmed LIKE 'PO[0-9]%' OR @Trimmed LIKE 'PO [0-9]%' OR @Trimmed LIKE 'PO only [0-9]%') 
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF @Trimmed LIKE 'NP[0-9]%'     -- confirmed: PO<N> = Post-Op N min
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF (@Trimmed LIKE 'PC[0-9]%' OR @Trimmed LIKE 'PC [0-9]%')    -- confirmed: PO<N> = Post-Op N min
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF (@Trimmed LIKE 'NP/IR[0-9]%' OR @Trimmed LIKE 'NP/IR [0-9]%')
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF ( @Trimmed LIKE 'NP/CCIR[0-9]%' OR @Trimmed LIKE 'NP/CCIR [0-9]%')
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF (@Trimmed LIKE 'OP[0-9]%' OR @Trimmed LIKE 'OP [0-9]%')
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF (@Trimmed LIKE 'TV[0-9]%' OR @Trimmed LIKE 'TV [0-9]%' 
+               or @Trimmed LIKE 'televisit [0-9]%')
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF ( @Trimmed LIKE 'clinic[0-9]%' OR @Trimmed LIKE 'clinic [0-9]%')
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF ( @Trimmed LIKE 'Mid-Level[0-9]%' OR @Trimmed LIKE 'Mid-Level [0-9]%'
+                  OR @Trimmed LIKE 'APP[0-9]%' OR @Trimmed LIKE 'APP [0-9]%')
+        BEGIN
+            SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
+            IF PATINDEX('%[^0-9]%', @Rest) = 0
+                SET @Result = CAST(@Rest AS INT);
+        END
+        ELSE IF ( @Trimmed LIKE 'Chemo[0-9]%' OR @Trimmed LIKE 'Chemo [0-9]%')
         BEGIN
             SET @Rest = SUBSTRING(@Trimmed, 3, LEN(@Trimmed) - 2);
             IF PATINDEX('%[^0-9]%', @Rest) = 0
@@ -112,8 +180,6 @@ BEGIN
 
     RETURN @Result;
 END
-GO
-
 
 
 -- Run this to see the actual breakdown before trusting any tier:
@@ -127,4 +193,4 @@ GO
 -- leave/out-of-office entries that may be misclassified as FREE_SLOT rather
 -- than BLOCKING at Stage 1. Worth a separate pass once the BLOCKING
 -- case-statement expansion is further along, rather than folding into this
--- capacity logic.
+-- capacity logic. No newline at end of file
