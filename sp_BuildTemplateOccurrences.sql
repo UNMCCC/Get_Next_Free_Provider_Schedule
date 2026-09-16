@@ -1,12 +1,15 @@
 ﻿USE [MosaiqAdmin]
 GO
-/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/14/2026 8:21:38 AM ******/
+
+/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/15/2026 6:40:44 PM ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE [dbo].[sp_BuildTemplateOccurrences]
+
+CREATE PROCEDURE [dbo].[sp_BuildTemplateOccurrences]
     @HorizonDays INT = 120
 AS
 BEGIN
@@ -312,6 +315,7 @@ BEGIN
             WHEN NormActivity LIKE '%Do not schedule%'     THEN 'BLOCKING' -- Gan Gregory Do not schedule 1 1.3-
             WHEN NormActivity LIKE '%Blocked Thursd%'      THEN 'BLOCKING' --  Harsh -- "Blocked Thursday..." AND "Blocked Wednesday"...
             WHEN NormActivity LIKE '%Blocked Wed%'        THEN 'BLOCKING' --  Harsh -- "Blocked Thursday..." AND "Blocked Wednesday"...
+            WHEN NormActivity LIKE '%Thammineni Out of Office%' THEN 'BLOCKING'
 --  Activity based filters should exclude this :  Hashemi -- 4th Tues  -- but shes gone!
 -- ASK Haynes -- Covering Harari Pre-Chemo (sounds like clinic hours, w specif?)
 -- ASK Hoorbeek --"Nemunaitis out prechemo... (sounds like clinic hours?)
@@ -361,3 +365,6 @@ BEGIN
     WHERE EndDatetime >= GETDATE();
 
 END
+GO
+
+
