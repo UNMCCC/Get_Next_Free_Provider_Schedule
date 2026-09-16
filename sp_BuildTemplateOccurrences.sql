@@ -1,19 +1,24 @@
 ﻿USE [MosaiqAdmin]
 GO
-
-/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/15/2026 6:40:44 PM ******/
+/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/16/2026 6:13:48 AM ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-CREATE PROCEDURE [dbo].[sp_BuildTemplateOccurrences]
+ALTER PROCEDURE [dbo].[sp_BuildTemplateOccurrences]
     @HorizonDays INT = 120
 AS
 BEGIN
     SET NOCOUNT ON;
+    -- THis SP extracts the template/guidelines. It then expands
+    -- the guidelines on the calendar, according to the decoded
+    -- frequency rules and the margins of the guideline. Carries
+    -- the TemplRule, LimitRUle and other elements, and most importantly
+    -- through CASE statements, gets the first pass at classifying
+    -- each guideline into BLOCKING or FREE_SLOT (aka clinic and 
+    -- potential available slot).
+
     --dependencies: [SchTempl]
 
     -- Sunday = 1 ... Saturday = 7, to match the README's weekday
@@ -365,6 +370,3 @@ BEGIN
     WHERE EndDatetime >= GETDATE();
 
 END
-GO
-
-
