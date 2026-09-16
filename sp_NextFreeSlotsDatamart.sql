@@ -1,9 +1,3 @@
-USE MosaiqAdmin
-GO
-IF OBJECT_ID('dbo.sp_NextFreeSlotsDatamart', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.sp_NextFreeSlotsDatamart;
-GO
-
 CREATE PROCEDURE dbo.sp_NextFreeSlotsDatamart
     @SlotMinutes         INT = NULL,   -- optional minimum-duration filter, same semantics as sp_GetNextFreeSlots
     @StaleDaysThreshold   INT = 180    -- days since last real visit before PossiblyDeparted flips to 1; tune per leave policy
@@ -67,7 +61,16 @@ BEGIN
     CREATE INDEX IX_Busy_Staff ON #Busy (Staff_Staff_ID);
 
     --------------------------------------------------------------------
-    -- 3) Booked count per whole window
+    -- 3) Booked count per whole window, plus EffectiveCapacity derived
+    --    per the confirmed precedence (see template_capacity_triage.sql):
+    --      1. RuleLimit >= 1                 -> use as-is
+    --      2. Manual override (capacity)     -> use it
+    --      3. Manual override (duration)     -> window / duration
+    --      4. Clean single parsed duration   -> window / duration
+    --      5. Explicit "Max N" text parsed   -> use N
+    --      6. Otherwise                      -> NULL (unlimited)
+    --    CapacitySource is carried along for auditability/debugging --
+    --    lets you see WHY a given window got the limit it did.
     --------------------------------------------------------------------
     IF OBJECT_ID('tempdb..#FreeIntervalBookedCount') IS NOT NULL DROP TABLE #FreeIntervalBookedCount;
     SELECT
@@ -79,20 +82,48 @@ BEGIN
             WHERE b.Staff_Staff_ID = f.Staff_Staff_ID
               AND b.StartDatetime < f.EndDatetime
               AND b.EndDatetime   > f.StartDatetime
-        )
+        ),
+        EffectiveCapacity = CASE
+            WHEN f.RuleLimit >= 1 THEN f.RuleLimit
+            WHEN ovr.ManualCapacity IS NOT NULL THEN ovr.ManualCapacity
+            WHEN ovr.ManualDurationMinutes IS NOT NULL
+                THEN DATEDIFF(MINUTE, f.StartDatetime, f.EndDatetime) / ovr.ManualDurationMinutes
+            WHEN dbo.fn_ExtractDurationMinutes(f.Activity) IS NOT NULL
+                THEN DATEDIFF(MINUTE, f.StartDatetime, f.EndDatetime) / dbo.fn_ExtractDurationMinutes(f.Activity)
+            WHEN dbo.fn_ExtractMaxPatients(f.Activity) IS NOT NULL
+                THEN dbo.fn_ExtractMaxPatients(f.Activity)
+            ELSE NULL
+        END,
+        CapacitySource = CASE
+            WHEN f.RuleLimit >= 1 THEN 'RULELIMIT'
+            WHEN ovr.ManualCapacity IS NOT NULL THEN 'MANUAL_OVERRIDE_CAPACITY'
+            WHEN ovr.ManualDurationMinutes IS NOT NULL THEN 'MANUAL_OVERRIDE_DURATION'
+            WHEN dbo.fn_ExtractDurationMinutes(f.Activity) IS NOT NULL THEN 'DURATION_DERIVED'
+            WHEN dbo.fn_ExtractMaxPatients(f.Activity) IS NOT NULL THEN 'MAX_PARSED'
+            ELSE 'UNLIMITED'
+        END
     INTO #FreeIntervalBookedCount
-    FROM #FreeIntervals f;
+    FROM #FreeIntervals f
+    LEFT JOIN dbo.TemplateCapacityOverride ovr
+        ON ovr.TemplateDescription = f.Activity;
 
     --------------------------------------------------------------------
-    -- 4) Eligible = under the configured Max Appointments limit (or
-    --    no cap applies / RuleLimit unconfigured)
+    -- 4) Eligible = under EffectiveCapacity (or no cap applies).
+    --    SCOPE CHANGE: enforcement now applies to TemplRule IN (1, 2, 12)
+    --    -- broadened from TemplRule = 2 only, per the earlier confirmed
+    --    decision that all three carry real limits (RuleLimit enforcement
+    --    must apply regardless of TemplRule value). TemplRule = 9 ("Only
+    --    Appointments with This Activity") is deliberately excluded --
+    --    RuleLimit is documented as unused for that rule, and activity-
+    --    restriction enforcement for 9/12 remains a separate deferred item.
     --------------------------------------------------------------------
     IF OBJECT_ID('tempdb..#Eligible') IS NOT NULL DROP TABLE #Eligible;
     SELECT
-        Staff_Staff_ID, Provider, TemplatePK, Activity, TemplRule, RuleLimit, BookedCount,
+        Staff_Staff_ID, Provider, TemplatePK, Activity, TemplRule, RuleLimit,
+        EffectiveCapacity, CapacitySource, BookedCount,
         StartDatetime, EndDatetime,
-        OpenCapacity = CASE WHEN TemplRule = 2 AND ISNULL(RuleLimit, 0) > 0
-                            THEN RuleLimit - BookedCount
+        OpenCapacity = CASE WHEN EffectiveCapacity IS NOT NULL
+                            THEN EffectiveCapacity - BookedCount
                             ELSE NULL END,
         RuleName = CASE TemplRule
                         WHEN 1  THEN 'Maximum Conflicts'
@@ -105,9 +136,9 @@ BEGIN
                    END
     INTO #Eligible
     FROM #FreeIntervalBookedCount
-    WHERE TemplRule <> 2
-       OR RuleLimit IS NULL OR RuleLimit = 0
-       OR BookedCount < RuleLimit;
+    WHERE TemplRule NOT IN (1, 2, 12)
+       OR EffectiveCapacity IS NULL
+       OR BookedCount < EffectiveCapacity;
 
     --------------------------------------------------------------------
     -- 5) Rank each provider's windows soonest-first
@@ -148,10 +179,12 @@ BEGIN
 
     INSERT INTO dbo.NextFreeSlotsDatamart
         (Staff_Staff_ID, Provider, TemplatePK, Activity, TemplRule, RuleName, RuleLimit,
+         EffectiveCapacity, CapacitySource,
          BookedCount, OpenCapacity, StartDatetime, EndDatetime, SlotRank,
          LastVisitDate, DaysSinceLastVisit, PossiblyDeparted, BuiltAt)
     SELECT
         Staff_Staff_ID, Provider, TemplatePK, Activity, TemplRule, RuleName, RuleLimit,
+        EffectiveCapacity, CapacitySource,
         BookedCount, OpenCapacity, StartDatetime, EndDatetime, SlotRank,
         LastVisitDate, DaysSinceLastVisit, PossiblyDeparted, @BuiltAt
     FROM #RankedWithVisit;
