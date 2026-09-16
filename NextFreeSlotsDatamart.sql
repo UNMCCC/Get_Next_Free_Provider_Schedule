@@ -1,4 +1,11 @@
-USE [MosaiqAdmin]
+﻿USE [MosaiqAdmin]
+GO
+
+/****** Object:  Table [dbo].[NextFreeSlotsDatamart]    Script Date: 9/16/2026 6:50:24 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
 GO
 
 /* =====================================================================
@@ -57,34 +64,41 @@ GO
    pipeline -- worth escalating separately to whoever owns the
    staff/provider status sync process, since any other system trusting
    that same status field has the same blind spot.
+
+   UPDATES:  Adds two columns to the destination table for the new text-derived
+   capacity logic (see template_capacity_triage.sql for the derivation
+   functions and precedence)
    ===================================================================== */
+
 
 IF OBJECT_ID('dbo.NextFreeSlotsDatamart', 'U') IS NOT NULL
     DROP TABLE dbo.NextFreeSlotsDatamart;
 GO
 
-CREATE TABLE dbo.NextFreeSlotsDatamart
-(
-    Staff_Staff_ID    INT           NOT NULL,
-    Provider          NVARCHAR(200) NULL,
-    TemplatePK        INT           NOT NULL,
-    Activity          NVARCHAR(200) NULL,   -- template name/description -- tells the scheduler what can be booked here
+CREATE TABLE [dbo].[NextFreeSlotsDatamart](
+	[Staff_Staff_ID] [int] NOT NULL,
+	[Provider] [nvarchar](200) NULL,
+	[TemplatePK] [int] NOT NULL,
+	[Activity] [nvarchar](200) NULL, -- template name/description -- tells the scheduler what can be booked here
     -- Department     NVARCHAR(200) NULL,  -- TODO: Department -- uncomment once column name is confirmed upstream
-    TemplRule         INT           NULL,
-    RuleName          VARCHAR(50)   NULL,   -- human-readable, from the TemplRule table in the README
-    RuleLimit         INT           NULL,
-    BookedCount       INT           NULL,
-    OpenCapacity      INT           NULL,   -- RuleLimit - BookedCount; NULL = uncapped
-    StartDatetime     DATETIME2(0)  NOT NULL,
-    EndDatetime       DATETIME2(0)  NOT NULL,
-    SlotRank          INT           NOT NULL,   -- 1 = this provider's soonest eligible window
-    LastVisitDate     DATE          NULL,       -- most recent real patient visit for this provider (visits_in_buckets)
-    DaysSinceLastVisit INT          NULL,       -- NULL if provider has no recorded visits at all
-    PossiblyDeparted  BIT           NULL,       -- SOFT FLAG ONLY -- see header note; never auto-excludes anyone
-    BuiltAt           DATETIME2(0)  NOT NULL
-);
+	[TemplRule] [int] NULL,
+	[RuleName] [varchar](50) NULL, -- human-readable, from the TemplRule table in the README
+	[RuleLimit] [int] NULL,
+	[BookedCount] [int] NULL,
+	[OpenCapacity] [int] NULL, -- RuleLimit - BookedCount; NULL = uncapped
+	[StartDatetime] [datetime2](0) NOT NULL,
+	[EndDatetime] [datetime2](0) NOT NULL,
+	[SlotRank] [int] NOT NULL, -- 1 = this provider's soonest eligible window
+	[LastVisitDate] [date] NULL, -- most recent real patient visit for this provider (visits_in_buckets)
+	[DaysSinceLastVisit] [int] NULL, -- NULL if provider has no recorded visits at all
+	[PossiblyDeparted] [bit] NULL, -- SOFT FLAG ONLY -- see header note; never auto-excludes anyone
+	[BuiltAt] [datetime2](0) NOT NULL,
+	[EffectiveCapacity] [int] NULL, -- based on potential-slots minus scheduled
+	[CapacitySource] [nvarchar](30) NULL -- limit, textbased->max, textbased->total..
+) ON [PRIMARY]
 GO
 
 CREATE INDEX IX_NextFreeSlotsDatamart_Provider_Rank
     ON dbo.NextFreeSlotsDatamart (Staff_Staff_ID, SlotRank);
 GO
+
