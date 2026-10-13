@@ -1,6 +1,6 @@
-﻿USE [MosaiqAdmin]
+USE [MosaiqAdmin]
 GO
-/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 9/16/2026 6:13:48 AM ******/
+/****** Object:  StoredProcedure [dbo].[sp_BuildTemplateOccurrences]    Script Date: 10/13/2026 3:56:44 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -321,6 +321,8 @@ BEGIN
             WHEN NormActivity LIKE '%Blocked Thursd%'      THEN 'BLOCKING' --  Harsh -- "Blocked Thursday..." AND "Blocked Wednesday"...
             WHEN NormActivity LIKE '%Blocked Wed%'        THEN 'BLOCKING' --  Harsh -- "Blocked Thursday..." AND "Blocked Wednesday"...
             WHEN NormActivity LIKE '%Thammineni Out of Office%' THEN 'BLOCKING'
+            WHEN NormActivity LIKE '%Ward%Attend%' THEN 'BLOCKING'
+
 --  Activity based filters should exclude this :  Hashemi -- 4th Tues  -- but shes gone!
 -- ASK Haynes -- Covering Harari Pre-Chemo (sounds like clinic hours, w specif?)
 -- ASK Hoorbeek --"Nemunaitis out prechemo... (sounds like clinic hours?)
